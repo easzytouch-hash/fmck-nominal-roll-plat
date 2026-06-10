@@ -186,7 +186,9 @@ async function handleLogin(e) {
       document.getElementById('user-role').textContent   = res.user.Role;
       document.getElementById('user-avatar').textContent = (res.user.Name || 'A')[0].toUpperCase();
       const adminNav = document.getElementById('nav-admin');
-      if (adminNav) adminNav.style.display = res.user.Role === 'SuperAdmin' ? '' : '';
+      if (adminNav) adminNav.style.display = res.user.Role === 'SuperAdmin' ? '' : 'none';
+      const addUserBtn = document.getElementById('btn-add-user');
+      if (addUserBtn) addUserBtn.style.display = res.user.Role === 'SuperAdmin' ? '' : 'none';
       document.getElementById('login-screen').classList.remove('active');
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app-screen').classList.remove('hidden');
@@ -1044,6 +1046,7 @@ function renderUsers() {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No users found.</td></tr>';
     return;
   }
+  const isSuperAdmin = currentUser && currentUser.Role === 'SuperAdmin';
   tbody.innerHTML = currentUsersData.map(u => `<tr>
     <td class="font-medium">${escapeHtml(u.Username)}</td>
     <td>${escapeHtml(u.Name)}</td>
@@ -1051,8 +1054,10 @@ function renderUsers() {
     <td>${escapeHtml(u.Email) || '—'}</td>
     <td>${getStatusBadge(u.Status)}</td>
     <td>
+      ${isSuperAdmin ? `
       <button class="btn btn-text" style="padding:4px 10px; font-size:12px;" onclick="editUser('${u.ID}')">✏ Edit</button>
       <button class="btn btn-danger" style="padding:4px 10px; font-size:12px;" onclick="deleteUser('${u.ID}','${escapeHtml(u.Username)}')">🗑</button>
+      ` : '<span class="text-muted">—</span>'}
     </td>
   </tr>`).join('');
 }

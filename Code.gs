@@ -495,6 +495,7 @@ function getAllUsers() {
 
 function saveUserRecord(currentUser, data) {
   if (!currentUser) return { success: false, message: 'Not authenticated.' };
+  if (currentUser.Role !== 'SuperAdmin') return { success: false, message: 'Only SuperAdmin can manage users.' };
   data = trimFields(data);
   const sheet   = getSpreadsheet().getSheetByName(CONFIG.SHEET_USERS);
   const isNew   = !data.ID;
@@ -521,6 +522,7 @@ function saveUserRecord(currentUser, data) {
 
 function deleteUserRecord(currentUser, id) {
   if (!currentUser) return { success: false, message: 'Not authenticated.' };
+  if (currentUser.Role !== 'SuperAdmin') return { success: false, message: 'Only SuperAdmin can manage users.' };
   if (currentUser.ID === id) return { success: false, message: 'You cannot delete your own account.' };
   const u = getSheetDataAsObjects(CONFIG.SHEET_USERS).find(x => x.ID === id);
   if (!u) return { success: false, message: 'User not found.' };
