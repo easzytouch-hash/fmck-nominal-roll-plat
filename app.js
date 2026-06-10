@@ -947,6 +947,67 @@ function generateReport() {
   }
 }
 
+function exportReportExcel() {
+  const type    = document.querySelector('input[name="report-type"]:checked').value;
+  const preview = document.getElementById('report-preview');
+  if (preview.querySelector('.placeholder-msg')) {
+    showToast('Generate a report first before exporting.', 'warning'); return;
+  }
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel export library failed to load.', 'error'); return;
+  }
+
+  let aoa = [];
+  let sheetName = 'Report';
+  let fileName = 'fmck_report.xlsx';
+
+  if (type === 'full') {
+    const selectedKeys = [...document.querySelectorAll('.col-cb:checked')].map(cb => cb.value);
+    const cols = REPORT_COLUMNS.filter(c => selectedKeys.includes(c.key));
+    const data = filteredStaffData.length ? filteredStaffData : currentStaffData;
+    aoa.push(cols.map(c => c.label));
+    data.forEach(s => {
+      aoa.push(cols.map(c => {
+        const v = s[c.key] || '';
+        return c.key.toLowerCase().includes('date') ? formatDate(v) : v;
+      }));
+    });
+    sheetName = 'Nominal Roll';
+    fileName = 'fmck_nominal_roll.xlsx';
+
+  } else if (type === 'summary') {
+    const data = filteredStaffData.length ? filteredStaffData : currentStaffData;
+    const byRank = {};
+    data.forEach(s => {
+      const rank = s.Rank || 'Unspecified';
+      byRank[rank] = (byRank[rank] || 0) + 1;
+    });
+    const sorted = Object.entries(byRank).sort((a,b) => b[1] - a[1]);
+    const total  = data.length;
+    aoa.push(['S/N', 'Rank / Cadre', 'Count', '%']);
+    sorted.forEach(([rank, count], i) => {
+      aoa.push([i + 1, rank, count, `${(count/total*100).toFixed(1)}%`]);
+    });
+    aoa.push(['', 'TOTAL', total, '100%']);
+    sheetName = 'Cadre Summary';
+    fileName = 'fmck_cadre_summary.xlsx';
+
+  } else if (type === 'blank') {
+    const cols = REPORT_COLUMNS;
+    aoa.push(['S/N', ...cols.map(c => c.label)]);
+    for (let i = 1; i <= 20; i++) {
+      aoa.push([i, ...cols.map(() => '')]);
+    }
+    sheetName = 'Blank Template';
+    fileName = 'fmck_blank_template.xlsx';
+  }
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, fileName);
+}
+
 function printReport() {
   const type    = document.querySelector('input[name="report-type"]:checked').value;
   const preview = document.getElementById('report-preview');

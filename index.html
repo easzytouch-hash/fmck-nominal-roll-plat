@@ -338,6 +338,7 @@
                 <h4 class="panel-label" style="margin:0">Preview</h4>
                 <div style="display:flex; gap:10px;">
                   <button class="btn btn-secondary" onclick="generateReport()">⟳ Generate</button>
+                  <button class="btn btn-secondary" onclick="exportReportExcel()">📊 Export Excel</button>
                   <button class="btn btn-primary"   onclick="printReport()">🖨 Print / PDF</button>
                 </div>
               </div>
@@ -657,6 +658,7 @@
   <!-- Print-only area (invisible on screen) -->
   <div id="print-area" class="print-only"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
