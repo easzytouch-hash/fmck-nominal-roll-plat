@@ -14,8 +14,10 @@ let filteredPostingsData  = [];
 let currentLocumsData     = [];
 let filteredLocumsData    = [];
 let currentUsersData      = [];
+let currentTransfersData  = [];
+let filteredTransfersData = [];
 let pendingFilter = null;
-let nrPage = 1, ptPage = 1, lcPage = 1, auditPage = 1;
+let nrPage = 1, ptPage = 1, lcPage = 1, auditPage = 1, trPage = 1;
 const PAGE_SIZE = 30;
 
 // ─── Report columns definition ───────────────────────────────
@@ -31,6 +33,9 @@ const REPORT_COLUMNS = [
   { key: 'LGA',                 label: 'LGA' },
   { key: 'GeopoliticalZone',    label: 'Geopolitical Zone' },
   { key: 'Qualification',       label: 'Qualification' },
+  { key: 'YearOfQualification', label: 'Year of Qualification' },
+  { key: 'PreviousWorkExperience', label: 'Previous Work Experience' },
+  { key: 'MajorField',          label: 'Major / Dominant Field' },
   { key: 'PreviousSalaryGrade', label: 'Previous Salary Grade' },
   { key: 'AbsorbedSalaryGrade', label: 'Absorbed Salary Grade' },
   { key: 'Rank',                label: 'Rank / Cadre' },
@@ -150,6 +155,7 @@ function switchTab(tabId) {
   if (tabId === 'dashboard')    loadDashboard();
   if (tabId === 'nominal-roll') loadNominalRoll();
   if (tabId === 'postings')     loadPostings();
+  if (tabId === 'transfers')    loadTransfers();
   if (tabId === 'locum')        loadLocums();
   if (tabId === 'reports')      initReports();
   if (tabId === 'admin')        { loadUsers(); switchSubTab('users'); }
@@ -208,7 +214,7 @@ async function handleLogin(e) {
 function handleLogout() {
   currentUser = null;
   currentStaffData = []; filteredStaffData = [];
-  currentPostingsData = []; currentLocumsData = [];
+  currentPostingsData = []; currentLocumsData = []; currentTransfersData = [];
   document.getElementById('app-screen').classList.remove('active');
   document.getElementById('app-screen').classList.add('hidden');
   document.getElementById('login-screen').style.display = '';
@@ -411,6 +417,7 @@ function closeStaffModal() {
 function clearStaffModal() {
   ['s-id','s-surname','s-firstname','s-othername','s-dob','s-phone','s-email',
    's-address','s-state','s-lga','s-folder','s-ippis','s-rank','s-qual',
+   's-yearqual','s-prevexp','s-majorfield',
    's-prev-grade','s-abs-grade','s-first-appt','s-confirm','s-present-appt',
    's-dept','s-unit','s-location','s-remarks'].forEach(id => {
     const el = document.getElementById(id);
@@ -443,6 +450,9 @@ function editStaff(id) {
   document.getElementById('s-ippis').value        = s.IPPISNo || '';
   document.getElementById('s-rank').value         = s.Rank || '';
   document.getElementById('s-qual').value         = s.Qualification || '';
+  document.getElementById('s-yearqual').value     = s.YearOfQualification || '';
+  document.getElementById('s-prevexp').value      = s.PreviousWorkExperience || '';
+  document.getElementById('s-majorfield').value   = s.MajorField || '';
   document.getElementById('s-prev-grade').value   = s.PreviousSalaryGrade || '';
   document.getElementById('s-abs-grade').value    = s.AbsorbedSalaryGrade || '';
   document.getElementById('s-first-appt').value   = s.DateOfFirstAppt ? s.DateOfFirstAppt.substring(0,10) : '';
@@ -474,6 +484,9 @@ async function submitStaffForm() {
     IPPISNo: document.getElementById('s-ippis').value.trim(),
     Rank: document.getElementById('s-rank').value.trim(),
     Qualification: document.getElementById('s-qual').value.trim(),
+    YearOfQualification: document.getElementById('s-yearqual').value.trim(),
+    PreviousWorkExperience: document.getElementById('s-prevexp').value.trim(),
+    MajorField: document.getElementById('s-majorfield').value.trim(),
     PreviousSalaryGrade: document.getElementById('s-prev-grade').value.trim(),
     AbsorbedSalaryGrade: document.getElementById('s-abs-grade').value.trim(),
     DateOfFirstAppt: document.getElementById('s-first-appt').value,
@@ -692,6 +705,260 @@ async function submitPostingForm() {
   } catch (err) {
     setFeedback('posting-feedback', 'Save failed. Please try again.', true);
   }
+}
+
+// ─── TRANSFERRED STAFF ────────────────────────────────────────
+async function loadTransfers() {
+  if (!currentTransfersData.length) {
+    document.getElementById('tr-table-body').innerHTML =
+      '<tr><td colspan="7" class="text-center"><div class="spinner"></div> Loading…</td></tr>';
+    try {
+      const res = await apiCall('getAllTransfers');
+      currentTransfersData = res.data || res || [];
+    } catch (err) {
+      showToast('Failed to load transfer records.', 'error'); return;
+    }
+    if (!currentStaffData.length) {
+      try { const r = await apiCall('getAllStaff'); currentStaffData = r.data || r || []; } catch(e){}
+    }
+  }
+  filterTransfers();
+}
+
+function filterTransfers() {
+  const q = document.getElementById('tr-search').value.toLowerCase();
+  filteredTransfersData = currentTransfersData.filter(t => {
+    return !q || [t.Surname, t.FirstName, t.OtherName, t.FolderNumber, t.Department, t.TransferDestination]
+      .some(f => (f || '').toLowerCase().includes(q));
+  });
+  trPage = 1;
+  renderTransfers();
+}
+
+function renderTransfers() {
+  const { items, total, page, totalPages, start } = paginate(filteredTransfersData, trPage);
+  trPage = page;
+  document.getElementById('tr-count').textContent = `${total} record${total !== 1 ? 's' : ''}`;
+
+  const tbody = document.getElementById('tr-table-body');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No transfer records found.</td></tr>';
+    document.getElementById('tr-pagination').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = items.map((t, i) => `<tr>
+    <td class="text-muted">${start + i + 1}</td>
+    <td class="font-medium">${escapeHtml(t.Surname)} ${escapeHtml(t.FirstName)} ${escapeHtml(t.OtherName || '')}</td>
+    <td>${escapeHtml(t.FolderNumber) || '—'}</td>
+    <td>${escapeHtml(t.Department) || '—'}</td>
+    <td>${escapeHtml(t.TransferDestination) || '—'}</td>
+    <td>${formatDate(t.DateOfTransfer)}</td>
+    <td>
+      <button class="btn btn-text" style="padding:4px 10px; font-size:12px;" onclick="editTransfer('${t.ID}')">✏ Edit</button>
+      <button class="btn btn-danger" style="padding:4px 10px; font-size:12px;" onclick="deleteTransfer('${t.ID}','${escapeHtml(t.Surname)} ${escapeHtml(t.FirstName)}')">🗑</button>
+    </td>
+  </tr>`).join('');
+
+  renderPagination('tr-pagination', page, totalPages, 'goTrPage');
+}
+
+function goTrPage(p) { trPage = p; renderTransfers(); }
+
+const TRANSFER_FIELD_IDS = [
+  'tr-id','tr-surname','tr-firstname','tr-othername','tr-dob','tr-phone','tr-email',
+  'tr-address','tr-state','tr-lga','tr-folder','tr-ippis','tr-rank','tr-qual',
+  'tr-yearqual','tr-prevexp','tr-majorfield','tr-prev-grade','tr-abs-grade',
+  'tr-first-appt','tr-confirm','tr-present-appt','tr-dept','tr-unit','tr-location',
+  'tr-remarks','tr-date','tr-destination','tr-condition','tr-authority'
+];
+
+function openTransferModal() {
+  clearTransferModal();
+  document.getElementById('transfer-modal-title').textContent = 'Add Transfer Record';
+  document.getElementById('transfer-modal').classList.remove('hidden');
+}
+
+function closeTransferModal() {
+  document.getElementById('transfer-modal').classList.add('hidden');
+}
+
+function clearTransferModal() {
+  TRANSFER_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('tr-gender').value = '';
+  document.getElementById('tr-zone').value   = '';
+  document.getElementById('tr-type').value   = 'Internal';
+  const dd = document.getElementById('tr-staff-dropdown');
+  if (dd) dd.classList.add('hidden');
+  setFeedback('transfer-feedback', '');
+}
+
+function searchStaffForTransfer() {
+  const q = document.getElementById('tr-staff-search').value.toLowerCase().trim();
+  const dd = document.getElementById('tr-staff-dropdown');
+  if (q.length < 2) { dd.classList.add('hidden'); return; }
+
+  const matches = currentStaffData.filter(s =>
+    `${s.Surname} ${s.FirstName}`.toLowerCase().includes(q) ||
+    (s.FolderNumber || '').toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  if (!matches.length) { dd.classList.add('hidden'); return; }
+  dd.innerHTML = matches.map(s => `
+    <div class="dropdown-item" onclick="selectStaffForTransfer('${s.ID}')">
+      <strong>${escapeHtml(s.Surname)} ${escapeHtml(s.FirstName)}</strong>
+      <small>${escapeHtml(s.FolderNumber || '—')} &nbsp;·&nbsp; ${escapeHtml(s.Rank || '')}</small>
+    </div>`).join('');
+  dd.classList.remove('hidden');
+}
+
+function selectStaffForTransfer(id) {
+  const s = currentStaffData.find(x => x.ID === id);
+  if (!s) return;
+  document.getElementById('tr-staff-search').value   = `${s.Surname} ${s.FirstName}`;
+  document.getElementById('tr-staff-dropdown').classList.add('hidden');
+
+  document.getElementById('tr-surname').value      = s.Surname || '';
+  document.getElementById('tr-firstname').value    = s.FirstName || '';
+  document.getElementById('tr-othername').value    = s.OtherName || '';
+  document.getElementById('tr-gender').value       = s.Gender || '';
+  document.getElementById('tr-dob').value          = s.DateOfBirth ? s.DateOfBirth.substring(0,10) : '';
+  document.getElementById('tr-phone').value        = s.Phone || '';
+  document.getElementById('tr-email').value        = s.Email || '';
+  document.getElementById('tr-address').value      = s.PermanentAddress || '';
+  document.getElementById('tr-state').value        = s.StateOfOrigin || '';
+  document.getElementById('tr-lga').value          = s.LGA || '';
+  document.getElementById('tr-zone').value         = s.GeopoliticalZone || '';
+  document.getElementById('tr-folder').value       = s.FolderNumber || '';
+  document.getElementById('tr-ippis').value        = s.IPPISNo || '';
+  document.getElementById('tr-rank').value         = s.Rank || '';
+  document.getElementById('tr-qual').value         = s.Qualification || '';
+  document.getElementById('tr-yearqual').value     = s.YearOfQualification || '';
+  document.getElementById('tr-prevexp').value      = s.PreviousWorkExperience || '';
+  document.getElementById('tr-majorfield').value   = s.MajorField || '';
+  document.getElementById('tr-prev-grade').value   = s.PreviousSalaryGrade || '';
+  document.getElementById('tr-abs-grade').value    = s.AbsorbedSalaryGrade || '';
+  document.getElementById('tr-first-appt').value   = s.DateOfFirstAppt ? s.DateOfFirstAppt.substring(0,10) : '';
+  document.getElementById('tr-confirm').value      = s.DateOfConfirmation ? s.DateOfConfirmation.substring(0,10) : '';
+  document.getElementById('tr-present-appt').value = s.DateOfPresentAppt ? s.DateOfPresentAppt.substring(0,10) : '';
+  document.getElementById('tr-dept').value         = s.Department || '';
+  document.getElementById('tr-unit').value         = s.Unit || '';
+  document.getElementById('tr-location').value     = s.Location || '';
+  document.getElementById('tr-remarks').value      = s.Remarks || '';
+}
+
+function editTransfer(id) {
+  const t = currentTransfersData.find(x => x.ID === id);
+  if (!t) { showToast('Record not found.', 'error'); return; }
+  clearTransferModal();
+  document.getElementById('transfer-modal-title').textContent = 'Edit Transfer Record';
+  document.getElementById('tr-id').value           = t.ID;
+  document.getElementById('tr-staff-search').value = `${t.Surname || ''} ${t.FirstName || ''}`;
+  document.getElementById('tr-surname').value      = t.Surname || '';
+  document.getElementById('tr-firstname').value    = t.FirstName || '';
+  document.getElementById('tr-othername').value    = t.OtherName || '';
+  document.getElementById('tr-gender').value       = t.Gender || '';
+  document.getElementById('tr-dob').value          = t.DateOfBirth ? t.DateOfBirth.substring(0,10) : '';
+  document.getElementById('tr-phone').value        = t.Phone || '';
+  document.getElementById('tr-email').value        = t.Email || '';
+  document.getElementById('tr-address').value      = t.PermanentAddress || '';
+  document.getElementById('tr-state').value        = t.StateOfOrigin || '';
+  document.getElementById('tr-lga').value          = t.LGA || '';
+  document.getElementById('tr-zone').value         = t.GeopoliticalZone || '';
+  document.getElementById('tr-folder').value       = t.FolderNumber || '';
+  document.getElementById('tr-ippis').value        = t.IPPISNo || '';
+  document.getElementById('tr-rank').value         = t.Rank || '';
+  document.getElementById('tr-qual').value         = t.Qualification || '';
+  document.getElementById('tr-yearqual').value     = t.YearOfQualification || '';
+  document.getElementById('tr-prevexp').value      = t.PreviousWorkExperience || '';
+  document.getElementById('tr-majorfield').value   = t.MajorField || '';
+  document.getElementById('tr-prev-grade').value   = t.PreviousSalaryGrade || '';
+  document.getElementById('tr-abs-grade').value    = t.AbsorbedSalaryGrade || '';
+  document.getElementById('tr-first-appt').value   = t.DateOfFirstAppt ? t.DateOfFirstAppt.substring(0,10) : '';
+  document.getElementById('tr-confirm').value      = t.DateOfConfirmation ? t.DateOfConfirmation.substring(0,10) : '';
+  document.getElementById('tr-present-appt').value = t.DateOfPresentAppt ? t.DateOfPresentAppt.substring(0,10) : '';
+  document.getElementById('tr-dept').value         = t.Department || '';
+  document.getElementById('tr-unit').value         = t.Unit || '';
+  document.getElementById('tr-location').value     = t.Location || '';
+  document.getElementById('tr-remarks').value      = t.Remarks || '';
+  document.getElementById('tr-date').value         = t.DateOfTransfer ? t.DateOfTransfer.substring(0,10) : '';
+  document.getElementById('tr-destination').value  = t.TransferDestination || '';
+  document.getElementById('tr-type').value         = t.TransferType || 'Internal';
+  document.getElementById('tr-condition').value    = t.ConditionsForTransfer || '';
+  document.getElementById('tr-authority').value    = t.ApprovingAuthority || '';
+  document.getElementById('transfer-modal').classList.remove('hidden');
+}
+
+async function submitTransferForm() {
+  const data = {
+    ID: document.getElementById('tr-id').value || '',
+    Surname: document.getElementById('tr-surname').value.trim(),
+    FirstName: document.getElementById('tr-firstname').value.trim(),
+    OtherName: document.getElementById('tr-othername').value.trim(),
+    Gender: document.getElementById('tr-gender').value,
+    DateOfBirth: document.getElementById('tr-dob').value,
+    Phone: document.getElementById('tr-phone').value.trim(),
+    Email: document.getElementById('tr-email').value.trim(),
+    PermanentAddress: document.getElementById('tr-address').value.trim(),
+    StateOfOrigin: document.getElementById('tr-state').value.trim(),
+    LGA: document.getElementById('tr-lga').value.trim(),
+    GeopoliticalZone: document.getElementById('tr-zone').value,
+    FolderNumber: document.getElementById('tr-folder').value.trim(),
+    IPPISNo: document.getElementById('tr-ippis').value.trim(),
+    Rank: document.getElementById('tr-rank').value.trim(),
+    Qualification: document.getElementById('tr-qual').value.trim(),
+    YearOfQualification: document.getElementById('tr-yearqual').value.trim(),
+    PreviousWorkExperience: document.getElementById('tr-prevexp').value.trim(),
+    MajorField: document.getElementById('tr-majorfield').value.trim(),
+    PreviousSalaryGrade: document.getElementById('tr-prev-grade').value.trim(),
+    AbsorbedSalaryGrade: document.getElementById('tr-abs-grade').value.trim(),
+    DateOfFirstAppt: document.getElementById('tr-first-appt').value,
+    DateOfConfirmation: document.getElementById('tr-confirm').value,
+    DateOfPresentAppt: document.getElementById('tr-present-appt').value,
+    Department: document.getElementById('tr-dept').value.trim(),
+    Unit: document.getElementById('tr-unit').value.trim(),
+    Location: document.getElementById('tr-location').value.trim(),
+    Remarks: document.getElementById('tr-remarks').value.trim(),
+    DateOfTransfer: document.getElementById('tr-date').value,
+    TransferDestination: document.getElementById('tr-destination').value.trim(),
+    TransferType: document.getElementById('tr-type').value,
+    ConditionsForTransfer: document.getElementById('tr-condition').value.trim(),
+    ApprovingAuthority: document.getElementById('tr-authority').value.trim(),
+  };
+  if (!data.Surname || !data.FirstName) {
+    setFeedback('transfer-feedback', 'Surname and First Name are required.', true); return;
+  }
+  if (!data.DateOfTransfer) {
+    setFeedback('transfer-feedback', 'Date of Transfer is required.', true); return;
+  }
+  try {
+    const res = await apiCall('saveTransferRecord', { currentUser, data });
+    if (res.success) {
+      showToast(res.message, 'success');
+      closeTransferModal();
+      currentTransfersData = [];
+      loadTransfers();
+    } else {
+      setFeedback('transfer-feedback', res.message, true);
+    }
+  } catch (err) {
+    setFeedback('transfer-feedback', 'Save failed. Please try again.', true);
+  }
+}
+
+async function deleteTransfer(id, name) {
+  if (!confirm(`Delete transfer record for "${name}"?`)) return;
+  try {
+    const res = await apiCall('deleteTransferRecord', { currentUser, id });
+    if (res.success) {
+      showToast(res.message, 'success');
+      currentTransfersData = []; loadTransfers();
+    } else {
+      showToast(res.message, 'error');
+    }
+  } catch (err) { showToast('Delete failed.', 'error'); }
 }
 
 // ─── LOCUM REGISTER ───────────────────────────────────────────

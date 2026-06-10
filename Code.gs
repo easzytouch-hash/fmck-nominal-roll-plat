@@ -8,6 +8,7 @@ const CONFIG = {
   SHEET_STAFF:    'NominalRoll',
   SHEET_POSTINGS: 'Postings',
   SHEET_LOCUM:    'LOCUMRegister',
+  SHEET_TRANSFERS:'TransferredStaff',
   SHEET_USERS:    'Users',
   SHEET_AUDIT:    'AuditLogs',
 };
@@ -39,6 +40,9 @@ function doPost(e) {
       case 'getAllStaff':           result = getAllStaff();                                                  break;
       case 'saveStaffRecord':       result = saveStaffRecord(req.currentUser, req.data);                    break;
       case 'deleteStaffRecord':     result = deleteStaffRecord(req.currentUser, req.id);                    break;
+      case 'getAllTransfers':       result = getAllTransfers();                                              break;
+      case 'saveTransferRecord':    result = saveTransferRecord(req.currentUser, req.data);                  break;
+      case 'deleteTransferRecord':  result = deleteTransferRecord(req.currentUser, req.id);                  break;
       case 'getAllPostings':        result = getAllPostings();                                               break;
       case 'savePosting':          result = savePosting(req.currentUser, req.data);                        break;
       case 'getAllLocums':          result = getAllLocums();                                                 break;
@@ -73,10 +77,24 @@ function setupDatabase() {
       headers: [
         'ID', 'FolderNumber', 'IPPISNo', 'Surname', 'FirstName', 'OtherName',
         'Gender', 'DateOfBirth', 'PermanentAddress', 'StateOfOrigin', 'LGA',
-        'GeopoliticalZone', 'Qualification', 'PreviousSalaryGrade', 'AbsorbedSalaryGrade',
+        'GeopoliticalZone', 'Qualification', 'YearOfQualification', 'PreviousWorkExperience',
+        'MajorField', 'PreviousSalaryGrade', 'AbsorbedSalaryGrade',
         'Rank', 'Department', 'Unit', 'DateOfFirstAppt', 'DateOfConfirmation',
         'DateOfPresentAppt', 'Phone', 'Email', 'Location', 'Status', 'Remarks',
         'CreatedAt', 'UpdatedAt'
+      ]
+    },
+    {
+      name: CONFIG.SHEET_TRANSFERS,
+      headers: [
+        'ID', 'FolderNumber', 'IPPISNo', 'Surname', 'FirstName', 'OtherName',
+        'Gender', 'DateOfBirth', 'PermanentAddress', 'StateOfOrigin', 'LGA',
+        'GeopoliticalZone', 'Qualification', 'YearOfQualification', 'PreviousWorkExperience',
+        'MajorField', 'PreviousSalaryGrade', 'AbsorbedSalaryGrade',
+        'Rank', 'Department', 'Unit', 'DateOfFirstAppt', 'DateOfConfirmation',
+        'DateOfPresentAppt', 'Phone', 'Email', 'Location', 'Status', 'Remarks',
+        'DateOfTransfer', 'TransferDestination', 'TransferType', 'ConditionsForTransfer',
+        'ApprovingAuthority', 'CreatedAt', 'UpdatedAt'
       ]
     },
     {
@@ -348,6 +366,66 @@ function deleteStaffRecord(currentUser, id) {
   deleteRowById(CONFIG.SHEET_STAFF, 'ID', id);
   logAudit(currentUser.Username, 'DELETE_STAFF', id, { name: `${s.Surname} ${s.FirstName}` });
   return { success: true, message: 'Staff record deleted.' };
+}
+
+// ------------------------------------------------------------
+// 6b. TRANSFERRED STAFF
+// ------------------------------------------------------------
+function getAllTransfers() {
+  return getSheetDataAsObjects(CONFIG.SHEET_TRANSFERS);
+}
+
+function saveTransferRecord(currentUser, data) {
+  if (!currentUser) return { success: false, message: 'Not authenticated.' };
+  data = trimFields(data);
+
+  const sheet = getSpreadsheet().getSheetByName(CONFIG.SHEET_TRANSFERS);
+  const now   = new Date();
+  const isNew = !data.ID;
+
+  if (isNew) {
+    data.ID        = generateId();
+    data.CreatedAt = now;
+    data.UpdatedAt = now;
+  } else {
+    const orig = getSheetDataAsObjects(CONFIG.SHEET_TRANSFERS).find(s => s.ID === data.ID);
+    data.CreatedAt = orig ? orig.CreatedAt : now;
+    data.UpdatedAt = now;
+  }
+
+  const row = [
+    data.ID, data.FolderNumber, data.IPPISNo, data.Surname, data.FirstName, data.OtherName,
+    data.Gender, data.DateOfBirth, data.PermanentAddress, data.StateOfOrigin, data.LGA,
+    data.GeopoliticalZone, data.Qualification, data.YearOfQualification, data.PreviousWorkExperience,
+    data.MajorField, data.PreviousSalaryGrade, data.AbsorbedSalaryGrade,
+    data.Rank, data.Department, data.Unit, data.DateOfFirstAppt, data.DateOfConfirmation,
+    data.DateOfPresentAppt, data.Phone, data.Email, data.Location,
+    data.Status || 'Transferred', data.Remarks,
+    data.DateOfTransfer, data.TransferDestination, data.TransferType, data.ConditionsForTransfer,
+    data.ApprovingAuthority, data.CreatedAt, data.UpdatedAt
+  ];
+
+  if (isNew) {
+    sheet.appendRow(row);
+    logAudit(currentUser.Username, 'CREATE_TRANSFER', data.ID,
+      { name: `${data.Surname} ${data.FirstName}`, destination: data.TransferDestination });
+  } else {
+    if (!updateRowById(CONFIG.SHEET_TRANSFERS, 'ID', data.ID, row))
+      return { success: false, message: 'Record not found for update.' };
+    logAudit(currentUser.Username, 'UPDATE_TRANSFER', data.ID,
+      { name: `${data.Surname} ${data.FirstName}` });
+  }
+
+  return { success: true, message: isNew ? 'Transfer record added successfully.' : 'Transfer record updated.' };
+}
+
+function deleteTransferRecord(currentUser, id) {
+  if (!currentUser) return { success: false, message: 'Not authenticated.' };
+  const s = getSheetDataAsObjects(CONFIG.SHEET_TRANSFERS).find(x => x.ID === id);
+  if (!s) return { success: false, message: 'Record not found.' };
+  deleteRowById(CONFIG.SHEET_TRANSFERS, 'ID', id);
+  logAudit(currentUser.Username, 'DELETE_TRANSFER', id, { name: `${s.Surname} ${s.FirstName}` });
+  return { success: true, message: 'Transfer record deleted.' };
 }
 
 // ------------------------------------------------------------
