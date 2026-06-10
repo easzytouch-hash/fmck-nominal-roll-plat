@@ -235,8 +235,10 @@ async function loadDashboard(forceRefresh = false) {
     document.getElementById('metric-external').textContent       = data.onExternalPosting ?? '—';
     document.getElementById('metric-missing-folder').textContent = data.missingFolderNo ?? '—';
     document.getElementById('metric-missing-ippis').textContent  = data.missingIppis   ?? '—';
+    document.getElementById('metric-transfers').textContent      = data.totalTransfers ?? '—';
     renderCompleteness(data.completeness || {});
     renderRecentPostings(data.recentPostings || []);
+    renderRecentTransfers(data.recentTransfers || []);
     if (forceRefresh) showToast('Dashboard refreshed.', 'success');
   } catch (err) {
     showToast('Failed to load dashboard metrics.', 'error');
@@ -253,6 +255,22 @@ function renderCompleteness(obj) {
       <span class="completeness-pct">${pct}%</span>
     </div>`;
   }).join('');
+}
+
+function renderRecentTransfers(list) {
+  const tbody = document.getElementById('recent-transfers-body');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No transfers in the last 30 days.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(t => `<tr>
+    <td class="font-medium">${escapeHtml(t.Surname)} ${escapeHtml(t.FirstName)}</td>
+    <td>${escapeHtml(t.FolderNumber) || '—'}</td>
+    <td>${escapeHtml(t.Department) || '—'}</td>
+    <td>${escapeHtml(t.TransferDestination) || '—'}</td>
+    <td>${formatDate(t.DateOfTransfer)}</td>
+  </tr>`).join('');
 }
 
 function renderRecentPostings(list) {

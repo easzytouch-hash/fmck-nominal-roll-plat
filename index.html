@@ -114,6 +114,10 @@
               <div class="metric-title">On External Posting</div>
               <div class="metric-value" id="metric-external">—</div>
             </div>
+            <div class="metric-card glass-panel clickable" onclick="navigateTo('transfers', null)" title="Transferred staff records">
+              <div class="metric-title">Transferred Staff</div>
+              <div class="metric-value" id="metric-transfers">—</div>
+            </div>
             <div class="metric-card glass-panel clickable warning-card" onclick="navigateTo('nominal-roll', {missing:'FolderNumber'})" title="Records without folder number">
               <div class="metric-title">⚠ Missing Folder No.</div>
               <div class="metric-value warning-val" id="metric-missing-folder">—</div>
@@ -143,6 +147,24 @@
                 </tr></thead>
                 <tbody id="recent-postings-body">
                   <tr><td colspan="6" class="text-center text-muted">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="glass-panel dash-section">
+            <div class="section-row">
+              <h3 class="section-title">RECENT TRANSFERS (LAST 30 DAYS)</h3>
+              <button class="btn btn-text" onclick="navigateTo('transfers', null)">View All →</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr>
+                  <th>Staff Name</th><th>Folder No.</th>
+                  <th>Department</th><th>Transfer Destination</th><th>Date of Transfer</th>
+                </tr></thead>
+                <tbody id="recent-transfers-body">
+                  <tr><td colspan="5" class="text-center text-muted">Loading…</td></tr>
                 </tbody>
               </table>
             </div>
