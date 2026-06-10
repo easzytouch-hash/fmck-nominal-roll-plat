@@ -329,7 +329,7 @@ function renderNominalRoll() {
     <td class="text-muted">${start + i + 1}</td>
     <td class="font-medium">${escapeHtml(s.FolderNumber) || '<span class="text-muted">—</span>'}</td>
     <td>
-      <div style="font-weight:600">${escapeHtml(s.Surname)} ${escapeHtml(s.FirstName)} ${escapeHtml(s.OtherName || '')}</div>
+      <div style="font-weight:600" class="staff-name-link" onclick="viewStaff('${s.ID}')">${escapeHtml(s.Surname)} ${escapeHtml(s.FirstName)} ${escapeHtml(s.OtherName || '')}</div>
     </td>
     <td>${escapeHtml(s.Rank) || '—'}</td>
     <td>${escapeHtml(s.AbsorbedSalaryGrade) || '—'}</td>
@@ -345,6 +345,56 @@ function renderNominalRoll() {
 }
 
 function goNrPage(p) { nrPage = p; renderNominalRoll(); }
+
+let viewingStaffId = null;
+
+function viewStaff(id) {
+  const s = currentStaffData.find(x => x.ID === id);
+  if (!s) { showToast('Record not found.', 'error'); return; }
+  viewingStaffId = id;
+
+  document.getElementById('staff-view-title').textContent =
+    `${s.Surname || ''} ${s.FirstName || ''} ${s.OtherName || ''}`.trim() || 'Staff Profile';
+
+  const missing = [];
+  const body = document.getElementById('staff-view-body');
+  body.innerHTML = REPORT_COLUMNS.map(col => {
+    let val = s[col.key];
+    if (col.key === 'DateOfBirth' || col.key === 'DateOfFirstAppt' ||
+        col.key === 'DateOfConfirmation' || col.key === 'DateOfPresentAppt') {
+      val = val ? val.substring(0, 10) : '';
+    }
+    const isEmpty = val === undefined || val === null || val === '';
+    if (isEmpty) missing.push(col.label);
+    const full = (col.key === 'Remarks' || col.key === 'PermanentAddress') ? ' full' : '';
+    return `<div class="profile-field${full}">
+      <div class="profile-label">${escapeHtml(col.label)}</div>
+      <div class="profile-value${isEmpty ? ' empty' : ''}">${isEmpty ? 'Not provided' : escapeHtml(String(val))}</div>
+    </div>`;
+  }).join('');
+
+  const banner = document.getElementById('staff-view-missing');
+  if (missing.length) {
+    banner.classList.remove('hidden');
+    banner.innerHTML = `⚠ ${missing.length} field${missing.length !== 1 ? 's' : ''} missing: ${missing.map(escapeHtml).join(', ')}`;
+  } else {
+    banner.classList.add('hidden');
+    banner.innerHTML = '';
+  }
+
+  document.getElementById('staff-view-modal').classList.remove('hidden');
+}
+
+function closeStaffViewModal() {
+  document.getElementById('staff-view-modal').classList.add('hidden');
+  viewingStaffId = null;
+}
+
+function editFromView() {
+  const id = viewingStaffId;
+  closeStaffViewModal();
+  if (id) editStaff(id);
+}
 
 function openStaffModal(id) {
   clearStaffModal();

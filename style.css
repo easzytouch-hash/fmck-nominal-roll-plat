@@ -136,6 +136,24 @@ textarea { resize: vertical; min-height: 60px; }
 
 .error-msg { color: var(--danger); font-size: 13px; margin-top: 0.75rem; min-height: 18px; }
 
+/* ─── Staff Profile (View Mode) ─────────────────────────── */
+.profile-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem 1.5rem; }
+.profile-field  { padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.profile-field.full { grid-column: 1/-1; }
+.profile-label  { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+.profile-value  { font-size: 14px; color: var(--text-main); font-weight: 500; word-break: break-word; }
+.profile-value.empty { color: var(--danger); font-weight: 400; font-style: italic; }
+.missing-banner {
+  background: rgba(220,53,69,0.08); border: 1px solid rgba(220,53,69,0.25);
+  color: var(--danger); border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; margin-bottom: 1.25rem;
+}
+.staff-name-link { cursor: pointer; color: var(--primary); }
+.staff-name-link:hover { text-decoration: underline; }
+@media (max-width: 640px) {
+  .profile-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── Buttons ────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;

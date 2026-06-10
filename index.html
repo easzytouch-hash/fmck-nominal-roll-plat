@@ -475,6 +475,24 @@
     </div>
   </div>
 
+  <!-- Staff View (Profile) Modal -->
+  <div id="staff-view-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h3 id="staff-view-title">Staff Profile</h3>
+        <button class="close-btn" onclick="closeStaffViewModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="staff-view-missing" class="missing-banner hidden"></div>
+        <div id="staff-view-body" class="profile-grid"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeStaffViewModal()">Close</button>
+        <button class="btn btn-primary" id="staff-view-edit-btn" onclick="editFromView()">✏ Edit Record</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Posting Modal -->
   <div id="posting-modal" class="modal-overlay hidden">
     <div class="modal-content glass-card">
