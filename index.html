@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FMCK Nominal Roll System</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <div class="bg-blob blob-3"></div>
+
+  <!-- ===================== LOGIN ===================== -->
+  <div id="login-screen" class="screen active">
+    <div class="login-card glass-card">
+      <div class="login-header">
+        <div class="logo-placeholder">NR</div>
+        <h2>FMCK Nominal Roll</h2>
+        <p>Federal Medical Centre, Kumo</p>
+        <p class="auth-notice">⚠ Authorised Personnel Only</p>
+      </div>
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="login-user" autocomplete="username" required placeholder="Enter username">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-pass" autocomplete="current-password" required placeholder="Enter password">
+        </div>
+        <div id="login-error" class="error-msg"></div>
+        <button type="submit" id="btn-login" class="btn btn-primary w-100 mt-3">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app-screen" class="screen hidden">
+    <div class="app-container glass-card">
+
+      <!-- SIDEBAR -->
+      <nav class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo-placeholder small">NR</div>
+          <div>
+            <h3>Nominal Roll</h3>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:2px">FMC Kumo</p>
+          </div>
+        </div>
+        <div class="sidebar-nav">
+          <button class="nav-btn active" data-tab="dashboard"    onclick="switchTab('dashboard')">    <span class="nav-icon">📊</span> Dashboard</button>
+          <button class="nav-btn"        data-tab="nominal-roll" onclick="switchTab('nominal-roll')"> <span class="nav-icon">👥</span> Nominal Roll</button>
+          <button class="nav-btn"        data-tab="postings"     onclick="switchTab('postings')">     <span class="nav-icon">🔄</span> Postings</button>
+          <button class="nav-btn"        data-tab="locum"        onclick="switchTab('locum')">        <span class="nav-icon">🏥</span> LOCUM Register</button>
+          <button class="nav-btn"        data-tab="reports"      onclick="switchTab('reports')">      <span class="nav-icon">📄</span> Reports</button>
+          <button class="nav-btn"        data-tab="admin"        onclick="switchTab('admin')" id="nav-admin"> <span class="nav-icon">⚙️</span> Admin Panel</button>
+        </div>
+        <div class="sidebar-footer">
+          <div class="user-info">
+            <div class="avatar" id="user-avatar">A</div>
+            <div>
+              <div class="user-name" id="user-name">Admin</div>
+              <div class="user-role" id="user-role">Administrator</div>
+            </div>
+          </div>
+          <button class="btn btn-secondary w-100" onclick="handleLogout()">↩ Logout</button>
+        </div>
+      </nav>
+
+      <!-- MAIN CONTENT -->
+      <main class="main-content">
+
+        <!-- ============ DASHBOARD ============ -->
+        <div id="view-dashboard" class="view active">
+          <div class="view-header">
+            <h2>Dashboard</h2>
+            <button class="btn btn-secondary" onclick="loadDashboard(true)">↻ Refresh</button>
+          </div>
+
+          <div class="metrics-grid" id="metrics-grid">
+            <div class="metric-card glass-panel clickable" onclick="navigateTo('nominal-roll', null)" title="View all staff">
+              <div class="metric-title">Total Staff</div>
+              <div class="metric-value" id="metric-total">—</div>
+            </div>
+            <div class="metric-card glass-panel clickable" onclick="navigateTo('nominal-roll', {status:'Active'})" title="Active staff">
+              <div class="metric-title">Active</div>
+              <div class="metric-value success-val" id="metric-active">—</div>
+            </div>
+            <div class="metric-card glass-panel clickable" onclick="navigateTo('nominal-roll', {level:'Senior'})" title="Senior staff (SP)">
+              <div class="metric-title">Senior Staff (SP)</div>
+              <div class="metric-value" id="metric-senior">—</div>
+            </div>
+            <div class="metric-card glass-panel clickable" onclick="navigateTo('nominal-roll', {level:'Junior'})" title="Junior staff (JP)">
+              <div class="metric-title">Junior Staff (JP)</div>
+              <div class="metric-value" id="metric-junior">—</div>
+            </div>
+            <div class="metric-card glass-panel clickable" onclick="navigateTo('locum', {status:'Active'})" title="Active LOCUMs">
+              <div class="metric-title">Active LOCUMs</div>
+              <div class="metric-value accent-val" id="metric-locums">—</div>
+            </div>
+            <div class="metric-card glass-panel clickable" onclick="navigateTo('postings', {type:'External',status:'Active'})" title="Staff on external posting">
+              <div class="metric-title">On External Posting</div>
+              <div class="metric-value" id="metric-external">—</div>
+            </div>
+            <div class="metric-card glass-panel clickable warning-card" onclick="navigateTo('nominal-roll', {missing:'FolderNumber'})" title="Records without folder number">
+              <div class="metric-title">⚠ Missing Folder No.</div>
+              <div class="metric-value warning-val" id="metric-missing-folder">—</div>
+            </div>
+            <div class="metric-card glass-panel clickable warning-card" onclick="navigateTo('nominal-roll', {missing:'IPPISNo'})" title="Records without IPPIS number">
+              <div class="metric-title">⚠ Missing IPPIS No.</div>
+              <div class="metric-value warning-val" id="metric-missing-ippis">—</div>
+            </div>
+          </div>
+
+          <div class="glass-panel dash-section">
+            <h3 class="section-title">DATA COMPLETENESS</h3>
+            <div id="completeness-bars"></div>
+          </div>
+
+          <div class="glass-panel dash-section">
+            <div class="section-row">
+              <h3 class="section-title">RECENT POSTINGS (LAST 30 DAYS)</h3>
+              <button class="btn btn-text" onclick="navigateTo('postings', null)">View All →</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr>
+                  <th>Staff Name</th><th>Folder No.</th>
+                  <th>From Department</th><th>To Department</th>
+                  <th>Type</th><th>Effective Date</th>
+                </tr></thead>
+                <tbody id="recent-postings-body">
+                  <tr><td colspan="6" class="text-center text-muted">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ NOMINAL ROLL ============ -->
+        <div id="view-nominal-roll" class="view">
+          <div class="view-header">
+            <h2>Nominal Roll</h2>
+            <div class="header-actions">
+              <button class="btn btn-secondary" onclick="openImportModal()">⬆ Import CSV</button>
+              <button class="btn btn-primary"   onclick="openStaffModal()">+ Add Staff</button>
+            </div>
+          </div>
+          <div class="controls-bar glass-panel">
+            <div class="search-box">
+              <input type="text" id="nr-search" placeholder="Search name, folder no., IPPIS, rank…" oninput="filterNominalRoll()">
+            </div>
+            <select id="nr-filter-status" onchange="filterNominalRoll()">
+              <option value="">All Status</option>
+              <option>Active</option>
+              <option>On External Posting</option>
+              <option>Retired</option>
+              <option>Transferred</option>
+              <option>Deceased</option>
+              <option>Suspended</option>
+            </select>
+            <select id="nr-filter-level" onchange="filterNominalRoll()">
+              <option value="">All Levels</option>
+              <option value="Senior">Senior (SP)</option>
+              <option value="Junior">Junior (JP)</option>
+            </select>
+            <span id="nr-count" class="count-badge"></span>
+          </div>
+          <div class="glass-panel">
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr>
+                  <th style="width:44px">S/N</th>
+                  <th>Folder No.</th>
+                  <th>Full Name</th>
+                  <th>Rank / Cadre</th>
+                  <th>Salary Grade</th>
+                  <th>Department</th>
+                  <th>Status</th>
+                  <th style="width:110px">Actions</th>
+                </tr></thead>
+                <tbody id="nr-table-body">
+                  <tr><td colspan="8" class="text-center"><div class="spinner"></div> Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination-bar" id="nr-pagination"></div>
+          </div>
+        </div>
+
+        <!-- ============ POSTINGS ============ -->
+        <div id="view-postings" class="view">
+          <div class="view-header">
+            <h2>Postings</h2>
+            <button class="btn btn-primary" onclick="openPostingModal()">+ Record Posting</button>
+          </div>
+          <div class="controls-bar glass-panel">
+            <div class="search-box">
+              <input type="text" id="pt-search" placeholder="Search name, folder no., department…" oninput="filterPostings()">
+            </div>
+            <select id="pt-filter-type" onchange="filterPostings()">
+              <option value="">All Types</option>
+              <option>Internal</option>
+              <option>External</option>
+            </select>
+            <select id="pt-filter-status" onchange="filterPostings()">
+              <option value="">All Status</option>
+              <option>Active</option>
+              <option>Completed</option>
+              <option>Recalled</option>
+              <option>Cancelled</option>
+            </select>
+            <span id="pt-count" class="count-badge"></span>
+          </div>
+          <div class="glass-panel">
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr>
+                  <th style="width:44px">S/N</th>
+                  <th>Staff Name</th>
+                  <th>Folder No.</th>
+                  <th>From Department</th>
+                  <th>To Department</th>
+                  <th>Type</th>
+                  <th>Effective Date</th>
+                  <th>Status</th>
+                  <th>Logged By</th>
+                </tr></thead>
+                <tbody id="pt-table-body">
+                  <tr><td colspan="9" class="text-center"><div class="spinner"></div> Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination-bar" id="pt-pagination"></div>
+          </div>
+        </div>
+
+        <!-- ============ LOCUM REGISTER ============ -->
+        <div id="view-locum" class="view">
+          <div class="view-header">
+            <h2>LOCUM Register</h2>
+            <button class="btn btn-primary" onclick="openLocumModal()">+ Add LOCUM</button>
+          </div>
+          <div class="controls-bar glass-panel">
+            <div class="search-box">
+              <input type="text" id="lc-search" placeholder="Search name, cadre, department…" oninput="filterLocums()">
+            </div>
+            <select id="lc-filter-status" onchange="filterLocums()">
+              <option value="">All Status</option>
+              <option>Active</option>
+              <option>Expired</option>
+              <option>Absorbed</option>
+              <option>Migrated</option>
+              <option>Terminated</option>
+            </select>
+            <select id="lc-filter-contract" onchange="filterLocums()">
+              <option value="">All Contract Types</option>
+              <option>Fixed</option>
+              <option>Open</option>
+            </select>
+            <span id="lc-count" class="count-badge"></span>
+          </div>
+          <div class="glass-panel">
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr>
+                  <th style="width:44px">S/N</th>
+                  <th>Full Name</th>
+                  <th>Cadre</th>
+                  <th>Department</th>
+                  <th>Contract Type</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Monthly Cost (₦)</th>
+                  <th>Status</th>
+                  <th style="width:110px">Actions</th>
+                </tr></thead>
+                <tbody id="lc-table-body">
+                  <tr><td colspan="10" class="text-center"><div class="spinner"></div> Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination-bar" id="lc-pagination"></div>
+          </div>
+        </div>
+
+        <!-- ============ REPORTS ============ -->
+        <div id="view-reports" class="view">
+          <div class="view-header"><h2>Reports</h2></div>
+          <div class="reports-layout">
+
+            <!-- Controls column -->
+            <div class="reports-controls">
+              <div class="glass-panel" style="padding:1.5rem; margin-bottom:1rem;">
+                <h4 class="panel-label">Report Type</h4>
+                <div class="radio-stack">
+                  <label class="radio-option">
+                    <input type="radio" name="report-type" value="full" checked onchange="handleReportTypeChange()">
+                    <span>Full Nominal Roll</span>
+                  </label>
+                  <label class="radio-option">
+                    <input type="radio" name="report-type" value="summary" onchange="handleReportTypeChange()">
+                    <span>Cadre / Department Summary</span>
+                  </label>
+                  <label class="radio-option">
+                    <input type="radio" name="report-type" value="blank" onchange="handleReportTypeChange()">
+                    <span>Blank Field Template</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="glass-panel" style="padding:1.5rem;" id="column-selector-panel">
+                <div class="section-row" style="margin-bottom:0.75rem;">
+                  <h4 class="panel-label" style="margin:0">Select Columns</h4>
+                  <div style="display:flex; gap:6px;">
+                    <button class="btn btn-text" style="padding:3px 8px; font-size:12px" onclick="selectAllColumns(true)">All</button>
+                    <button class="btn btn-text" style="padding:3px 8px; font-size:12px" onclick="selectAllColumns(false)">None</button>
+                  </div>
+                </div>
+                <div id="column-checkboxes"></div>
+              </div>
+            </div>
+
+            <!-- Preview column -->
+            <div class="glass-panel" style="padding:1.5rem; min-width:0;">
+              <div class="section-row" style="margin-bottom:1.5rem;">
+                <h4 class="panel-label" style="margin:0">Preview</h4>
+                <div style="display:flex; gap:10px;">
+                  <button class="btn btn-secondary" onclick="generateReport()">⟳ Generate</button>
+                  <button class="btn btn-primary"   onclick="printReport()">🖨 Print / PDF</button>
+                </div>
+              </div>
+              <div id="report-preview">
+                <p class="placeholder-msg">Select a report type and click Generate.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ ADMIN PANEL ============ -->
+        <div id="view-admin" class="view">
+          <div class="view-header"><h2>Admin Panel</h2></div>
+          <div class="sub-tab-bar glass-panel">
+            <button class="sub-tab-btn active" data-subtab="users" onclick="switchSubTab('users')">👤 Users</button>
+            <button class="sub-tab-btn"        data-subtab="audit" onclick="switchSubTab('audit')">📋 Audit Logs</button>
+          </div>
+
+          <div id="subtab-users" class="sub-tab-content active">
+            <div class="view-header" style="margin-bottom:1rem;">
+              <h3 style="font-size:18px;">System Users</h3>
+              <button class="btn btn-primary" onclick="openUserModal()">+ Add User</button>
+            </div>
+            <div class="glass-panel">
+              <div class="table-container">
+                <table class="data-table">
+                  <thead><tr>
+                    <th>Username</th><th>Name</th><th>Role</th>
+                    <th>Email</th><th>Status</th><th>Actions</th>
+                  </tr></thead>
+                  <tbody id="users-table-body">
+                    <tr><td colspan="6" class="text-center"><div class="spinner"></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="subtab-audit" class="sub-tab-content">
+            <div class="glass-panel">
+              <div class="table-container">
+                <table class="data-table">
+                  <thead><tr>
+                    <th>Timestamp</th><th>User</th>
+                    <th>Action</th><th>Target</th><th>Details</th>
+                  </tr></thead>
+                  <tbody id="audit-table-body">
+                    <tr><td colspan="5" class="text-center"><div class="spinner"></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-bar" id="audit-pagination"></div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ===================== MODALS ===================== -->
+
+  <!-- Staff Modal -->
+  <div id="staff-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h3 id="staff-modal-title">Add Staff Record</h3>
+        <button class="close-btn" onclick="closeStaffModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="s-id">
+        <div class="form-section">
+          <h4>Personal Information</h4>
+          <div class="form-grid">
+            <div class="form-group"><label>Surname *</label><input type="text" id="s-surname"></div>
+            <div class="form-group"><label>First Name *</label><input type="text" id="s-firstname"></div>
+            <div class="form-group"><label>Other Name</label><input type="text" id="s-othername"></div>
+            <div class="form-group"><label>Gender</label>
+              <select id="s-gender"><option value="">— Select —</option><option value="M">Male</option><option value="F">Female</option></select>
+            </div>
+            <div class="form-group"><label>Date of Birth</label><input type="date" id="s-dob"></div>
+            <div class="form-group"><label>Phone</label><input type="text" id="s-phone"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="s-email"></div>
+            <div class="form-group" style="grid-column:1/-1"><label>Permanent Address</label><textarea id="s-address"></textarea></div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h4>State of Origin</h4>
+          <div class="form-grid">
+            <div class="form-group"><label>State of Origin</label><input type="text" id="s-state"></div>
+            <div class="form-group"><label>LGA</label><input type="text" id="s-lga"></div>
+            <div class="form-group"><label>Geopolitical Zone</label>
+              <select id="s-zone">
+                <option value="">— Select —</option>
+                <option>North East</option><option>North West</option><option>North Central</option>
+                <option>South East</option><option>South West</option><option>South South</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h4>Appointment Details</h4>
+          <div class="form-grid">
+            <div class="form-group"><label>Folder No. / File No.</label><input type="text" id="s-folder"></div>
+            <div class="form-group"><label>IPPIS Number</label><input type="text" id="s-ippis"></div>
+            <div class="form-group"><label>Rank / Cadre</label><input type="text" id="s-rank"></div>
+            <div class="form-group"><label>Qualification</label><input type="text" id="s-qual"></div>
+            <div class="form-group"><label>Previous Salary Grade</label><input type="text" id="s-prev-grade"></div>
+            <div class="form-group"><label>Absorbed Salary Grade</label><input type="text" id="s-abs-grade"></div>
+            <div class="form-group"><label>Date of 1st Appointment</label><input type="date" id="s-first-appt"></div>
+            <div class="form-group"><label>Date of Confirmation</label><input type="date" id="s-confirm"></div>
+            <div class="form-group"><label>Date of Present Appointment</label><input type="date" id="s-present-appt"></div>
+            <div class="form-group"><label>Department</label><input type="text" id="s-dept"></div>
+            <div class="form-group"><label>Unit</label><input type="text" id="s-unit"></div>
+            <div class="form-group"><label>Location</label><input type="text" id="s-location"></div>
+            <div class="form-group"><label>Status</label>
+              <select id="s-status">
+                <option value="Active">Active</option>
+                <option value="On External Posting">On External Posting</option>
+                <option value="Retired">Retired</option>
+                <option value="Transferred">Transferred</option>
+                <option value="Deceased">Deceased</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1"><label>Remarks</label><textarea id="s-remarks"></textarea></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="feedback-msg" id="staff-feedback"></span>
+        <button class="btn btn-secondary" onclick="closeStaffModal()">Cancel</button>
+        <button class="btn btn-primary"   onclick="submitStaffForm()">Save Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Posting Modal -->
+  <div id="posting-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h3>Record Posting</h3>
+        <button class="close-btn" onclick="closePostingModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pt-id">
+        <input type="hidden" id="pt-staff-id">
+        <input type="hidden" id="pt-staff-name-val">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1; position:relative;">
+            <label>Staff Member *  (type to search by name or folder number)</label>
+            <input type="text" id="pt-staff-search" placeholder="e.g. Musa or FMCK/SP/046…" oninput="searchStaffForPosting()" autocomplete="off">
+            <div id="pt-staff-dropdown" class="search-dropdown hidden"></div>
+          </div>
+          <div class="form-group"><label>From Department</label><input type="text" id="pt-from-dept" readonly placeholder="Auto-filled from staff record"></div>
+          <div class="form-group"><label>From Unit</label><input type="text" id="pt-from-unit" placeholder="Optional"></div>
+          <div class="form-group"><label>To Department *</label><input type="text" id="pt-to-dept"></div>
+          <div class="form-group"><label>To Unit</label><input type="text" id="pt-to-unit"></div>
+          <div class="form-group"><label>Posting Type *</label>
+            <select id="pt-type" onchange="toggleExternalFields()">
+              <option value="Internal">Internal (within hospital)</option>
+              <option value="External">External (outside hospital)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Effective Date *</label><input type="date" id="pt-effective-date"></div>
+          <div id="external-fields" class="hidden" style="grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:0 1.5rem;">
+            <div class="form-group"><label>Destination Institution</label><input type="text" id="pt-destination"></div>
+            <div class="form-group"><label>Releasing Authority</label><input type="text" id="pt-authority"></div>
+            <div class="form-group"><label>Posting Letter Ref.</label><input type="text" id="pt-letter-ref"></div>
+            <div class="form-group"><label>Expected Return Date</label><input type="date" id="pt-return-date"></div>
+          </div>
+          <div class="form-group"><label>Posting Status</label>
+            <select id="pt-status">
+              <option value="Active">Active</option>
+              <option value="Completed">Completed</option>
+              <option value="Recalled">Recalled</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1"><label>Notes</label><textarea id="pt-notes"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="feedback-msg" id="posting-feedback"></span>
+        <button class="btn btn-secondary" onclick="closePostingModal()">Cancel</button>
+        <button class="btn btn-primary"   onclick="submitPostingForm()">Record Posting</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOCUM Modal -->
+  <div id="locum-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h3 id="locum-modal-title">Add LOCUM Staff</h3>
+        <button class="close-btn" onclick="closeLocumModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="lc-id">
+        <div class="form-grid">
+          <div class="form-group"><label>Full Name *</label><input type="text" id="lc-name"></div>
+          <div class="form-group"><label>Gender</label>
+            <select id="lc-gender"><option value="">— Select —</option><option value="M">Male</option><option value="F">Female</option></select>
+          </div>
+          <div class="form-group"><label>Cadre / Designation *</label><input type="text" id="lc-cadre"></div>
+          <div class="form-group"><label>Department *</label><input type="text" id="lc-dept"></div>
+          <div class="form-group"><label>Phone</label><input type="text" id="lc-phone"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="lc-email"></div>
+          <div class="form-group"><label>Contract Type</label>
+            <select id="lc-contract-type">
+              <option value="Fixed">Fixed Period</option>
+              <option value="Open">Open / Rolling</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Contract Start</label><input type="date" id="lc-start"></div>
+          <div class="form-group"><label>Contract End</label><input type="date" id="lc-end"></div>
+          <div class="form-group"><label>IGR Vote Code</label><input type="text" id="lc-vote"></div>
+          <div class="form-group"><label>Monthly Cost (₦)</label><input type="number" id="lc-cost" step="0.01"></div>
+          <div class="form-group"><label>Status</label>
+            <select id="lc-status">
+              <option>Active</option><option>Expired</option>
+              <option>Absorbed</option><option>Migrated</option><option>Terminated</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1"><label>Notes</label><textarea id="lc-notes"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="feedback-msg" id="locum-feedback"></span>
+        <button class="btn btn-secondary" onclick="closeLocumModal()">Cancel</button>
+        <button class="btn btn-primary"   onclick="submitLocumForm()">Save LOCUM</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div id="user-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-card" style="max-width:480px;">
+      <div class="modal-header">
+        <h3 id="user-modal-title">Add System User</h3>
+        <button class="close-btn" onclick="closeUserModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="u-id">
+        <div class="form-group"><label>Full Name *</label><input type="text" id="u-name"></div>
+        <div class="form-group"><label>Username *</label><input type="text" id="u-username"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="u-password" placeholder="Leave blank to keep existing"></div>
+        <div class="form-group"><label>Role</label>
+          <select id="u-role">
+            <option value="SuperAdmin">Super Admin</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Email</label><input type="email" id="u-email"></div>
+        <div class="form-group"><label>Status</label>
+          <select id="u-status"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="feedback-msg" id="user-feedback"></span>
+        <button class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+        <button class="btn btn-primary"   onclick="submitUserForm()">Save User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div id="import-modal" class="modal-overlay hidden">
+    <div class="modal-content glass-card" style="max-width:540px;">
+      <div class="modal-header">
+        <h3>Import Staff Records (CSV)</h3>
+        <button class="close-btn" onclick="closeImportModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="import-instructions glass-panel">
+          <strong>Expected CSV columns (in order):</strong><br>
+          FolderNumber, IPPISNo, Surname, FirstName, OtherName, Gender, DateOfBirth, PermanentAddress,
+          StateOfOrigin, LGA, GeopoliticalZone, Qualification, PreviousSalaryGrade, AbsorbedSalaryGrade,
+          Rank, Department, Unit, DateOfFirstAppt, DateOfConfirmation, DateOfPresentAppt,
+          Phone, Email, Location, Status, Remarks
+        </div>
+        <div class="form-group" style="margin-top:1.5rem;">
+          <label>Select CSV File</label>
+          <input type="file" id="import-file" accept=".csv" onchange="previewImportFile()">
+        </div>
+        <div id="import-preview"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="feedback-msg" id="import-feedback"></span>
+        <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+        <button class="btn btn-primary" id="import-btn" onclick="submitImport()" disabled>Import Records</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Print-only area (invisible on screen) -->
+  <div id="print-area" class="print-only"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
