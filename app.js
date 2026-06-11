@@ -51,6 +51,36 @@ const REPORT_COLUMNS = [
   { key: 'Remarks',             label: 'Remarks' },
 ];
 
+// Columns for Transferred Staff profile view (nominal roll fields + transfer details)
+const TRANSFER_VIEW_COLUMNS = [
+  ...REPORT_COLUMNS,
+  { key: 'DateOfTransfer',        label: 'Date of Transfer' },
+  { key: 'TransferDestination',   label: 'Transfer Destination' },
+  { key: 'TransferType',          label: 'Transfer Type' },
+  { key: 'ConditionsForTransfer', label: 'Conditions for Transfer' },
+  { key: 'ApprovingAuthority',    label: 'Approving Authority' },
+];
+
+// Columns for LOCUM Staff profile view
+const LOCUM_VIEW_COLUMNS = [
+  { key: 'FullName',      label: 'Full Name' },
+  { key: 'Gender',        label: 'Gender' },
+  { key: 'Cadre',         label: 'Cadre' },
+  { key: 'Department',    label: 'Department' },
+  { key: 'Phone',         label: 'Phone' },
+  { key: 'Email',         label: 'Email' },
+  { key: 'ContractType',  label: 'Contract Type' },
+  { key: 'ContractStart', label: 'Contract Start' },
+  { key: 'ContractEnd',   label: 'Contract End' },
+  { key: 'IGRVoteCode',   label: 'IGR Vote Code' },
+  { key: 'MonthlyCost',   label: 'Monthly Cost (₦)' },
+  { key: 'Status',        label: 'Status' },
+  { key: 'Notes',         label: 'Notes' },
+];
+
+const DATE_FIELD_KEYS = ['DateOfBirth','DateOfFirstAppt','DateOfConfirmation','DateOfPresentAppt',
+  'DateOfTransfer','ContractStart','ContractEnd'];
+
 // Default columns selected for Full Nominal Roll print
 const DEFAULT_SELECTED_COLUMNS = [
   'FolderNumber','IPPISNo','Surname','FirstName','OtherName','Gender',
@@ -373,26 +403,22 @@ function renderNominalRoll() {
 function goNrPage(p) { nrPage = p; renderNominalRoll(); }
 
 let viewingStaffId = null;
+let viewingType = 'staff'; // 'staff' | 'transfer' | 'locum'
 
-function viewStaff(id) {
-  const s = currentStaffData.find(x => x.ID === id);
-  if (!s) { showToast('Record not found.', 'error'); return; }
-  viewingStaffId = id;
-
-  document.getElementById('staff-view-title').textContent =
-    `${s.Surname || ''} ${s.FirstName || ''} ${s.OtherName || ''}`.trim() || 'Staff Profile';
+function renderProfileView(record, columns, title) {
+  document.getElementById('staff-view-title').textContent = title || 'Profile';
 
   const missing = [];
   const body = document.getElementById('staff-view-body');
-  body.innerHTML = REPORT_COLUMNS.map(col => {
-    let val = s[col.key];
-    if (col.key === 'DateOfBirth' || col.key === 'DateOfFirstAppt' ||
-        col.key === 'DateOfConfirmation' || col.key === 'DateOfPresentAppt') {
-      val = val ? val.substring(0, 10) : '';
+  body.innerHTML = columns.map(col => {
+    let val = record[col.key];
+    if (DATE_FIELD_KEYS.includes(col.key)) {
+      val = val ? String(val).substring(0, 10) : '';
     }
     const isEmpty = val === undefined || val === null || val === '';
     if (isEmpty) missing.push(col.label);
-    const full = (col.key === 'Remarks' || col.key === 'PermanentAddress') ? ' full' : '';
+    const full = (col.key === 'Remarks' || col.key === 'Notes' || col.key === 'PermanentAddress' ||
+                   col.key === 'ConditionsForTransfer') ? ' full' : '';
     return `<div class="profile-field${full}">
       <div class="profile-label">${escapeHtml(col.label)}</div>
       <div class="profile-value${isEmpty ? ' empty' : ''}">${isEmpty ? 'Not provided' : escapeHtml(String(val))}</div>
@@ -411,6 +437,32 @@ function viewStaff(id) {
   document.getElementById('staff-view-modal').classList.remove('hidden');
 }
 
+function viewStaff(id) {
+  const s = currentStaffData.find(x => x.ID === id);
+  if (!s) { showToast('Record not found.', 'error'); return; }
+  viewingStaffId = id;
+  viewingType = 'staff';
+  const title = `${s.Surname || ''} ${s.FirstName || ''} ${s.OtherName || ''}`.trim() || 'Staff Profile';
+  renderProfileView(s, REPORT_COLUMNS, title);
+}
+
+function viewTransfer(id) {
+  const t = currentTransfersData.find(x => x.ID === id);
+  if (!t) { showToast('Record not found.', 'error'); return; }
+  viewingStaffId = id;
+  viewingType = 'transfer';
+  const title = `${t.Surname || ''} ${t.FirstName || ''} ${t.OtherName || ''}`.trim() || 'Transfer Profile';
+  renderProfileView(t, TRANSFER_VIEW_COLUMNS, title);
+}
+
+function viewLocum(id) {
+  const l = currentLocumsData.find(x => x.LocumID === id);
+  if (!l) { showToast('Record not found.', 'error'); return; }
+  viewingStaffId = id;
+  viewingType = 'locum';
+  renderProfileView(l, LOCUM_VIEW_COLUMNS, l.FullName || 'LOCUM Profile');
+}
+
 function closeStaffViewModal() {
   document.getElementById('staff-view-modal').classList.add('hidden');
   viewingStaffId = null;
@@ -418,8 +470,12 @@ function closeStaffViewModal() {
 
 function editFromView() {
   const id = viewingStaffId;
+  const type = viewingType;
   closeStaffViewModal();
-  if (id) editStaff(id);
+  if (!id) return;
+  if (type === 'transfer') editTransfer(id);
+  else if (type === 'locum') editLocum(id);
+  else editStaff(id);
 }
 
 function openStaffModal(id) {
@@ -766,7 +822,9 @@ function renderTransfers() {
   }
   tbody.innerHTML = items.map((t, i) => `<tr>
     <td class="text-muted">${start + i + 1}</td>
-    <td class="font-medium">${escapeHtml(t.Surname)} ${escapeHtml(t.FirstName)} ${escapeHtml(t.OtherName || '')}</td>
+    <td>
+      <div style="font-weight:600" class="staff-name-link" onclick="viewTransfer('${t.ID}')">${escapeHtml(t.Surname)} ${escapeHtml(t.FirstName)} ${escapeHtml(t.OtherName || '')}</div>
+    </td>
     <td>${escapeHtml(t.FolderNumber) || '—'}</td>
     <td>${escapeHtml(t.Department) || '—'}</td>
     <td>${escapeHtml(t.TransferDestination) || '—'}</td>
@@ -1027,7 +1085,9 @@ function renderLocums() {
   }
   tbody.innerHTML = items.map((l, i) => `<tr>
     <td class="text-muted">${start + i + 1}</td>
-    <td class="font-medium">${escapeHtml(l.FullName)}</td>
+    <td>
+      <div style="font-weight:600" class="staff-name-link" onclick="viewLocum('${l.LocumID}')">${escapeHtml(l.FullName)}</div>
+    </td>
     <td>${escapeHtml(l.Cadre) || '—'}</td>
     <td>${escapeHtml(l.Department) || '—'}</td>
     <td>${getStatusBadge(l.ContractType)}</td>
