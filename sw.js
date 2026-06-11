@@ -1,5 +1,5 @@
 // FMCK Nominal Roll — Service Worker
-const CACHE_NAME  = 'fmck-nr-v1';
+const CACHE_NAME  = 'fmck-nr-v2';
 const CACHE_ASSETS = [
   './',
   './index.html',
@@ -30,15 +30,14 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(e.request).catch(() => new Response('{}', { headers: { 'Content-Type': 'application/json' }})));
     return;
   }
-  // Cache-first for static assets
+  // Network-first for static assets, falling back to cache when offline
   e.respondWith(
-    caches.match(e.request)
-      .then(cached => cached || fetch(e.request).then(res => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        }
-        return res;
-      }))
+    fetch(e.request).then(res => {
+      if (res.ok) {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
